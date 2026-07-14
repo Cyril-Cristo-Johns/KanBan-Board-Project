@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban To-Do Board</title>
+    <style>
+        /* Design Tokens & Theme Variables */
+        :root {
+            --bg-color: #f8fafc;
+            --column-bg: #ffffff;
+            --text-main: #1e293b;
+            --border-color: #e2e8f0;
+            --card-bg: #fdfdfd;
+            
+            /* Status Accents */
+            --todo-color: #3b82f6;
+            --progress-color: #f59e0b;
+            --completed-color: #10b981;
+            
+            /* Action Colors */
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+        }
+
+        /* Strict CSS Reset */
+        * {
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        /* Input Form Container */
+        .input-container {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            max-width: 500px;
+            margin: 0 auto 40px auto;
+        }
+
+        .input-container input {
+            flex: 1;
+            padding: 12px 18px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-container input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+
+        .input-container button {
+            padding: 12px 24px;
+            background-color: var(--primary);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .input-container button:hover:not(:disabled) {
+            background-color: var(--primary-hover);
+        }
+
+        .input-container button:disabled {
+            background-color: #cbd5e1;
+            cursor: not-allowed;
+            color: #94a3b8;
+        }
+
+        /* Kanban Board Grid Layout */
+        .main {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            align-items: flex-start;
+        }
+
+        .colm {
+            background-color: var(--column-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            width: 32%;
+            min-height: 480px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        /* Color Coding the Headers & Column Top Borders */
+        .colm h1 {
+            font-size: 18px;
+            font-weight: 700;
+            padding-bottom: 14px;
+            text-align: center;
+            margin-bottom: 18px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        #todo { border-top: 4px solid var(--todo-color); }
+        #todo h1 { color: var(--todo-color); border-bottom: 2px solid rgba(59, 130, 246, 0.15); }
+
+        #progress { border-top: 4px solid var(--progress-color); }
+        #progress h1 { color: var(--progress-color); border-bottom: 2px solid rgba(245, 158, 11, 0.15); }
+
+        #Completed { border-top: 4px solid var(--completed-color); }
+        #Completed h1 { color: var(--completed-color); border-bottom: 2px solid rgba(16, 185, 129, 0.15); }
+
+        /* Draggable Task Cards */
+        .items {
+            background-color: var(--card-bg);
+            color: var(--text-main);
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            cursor: grab;
+            font-size: 15px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            transition: transform 0.1s, box-shadow 0.1s, border-color 0.1s;
+        }
+
+        .items:active {
+            cursor: grabbing;
+            transform: scale(0.97);
+        }
+
+        .items:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border-color: #cbd5e1;
+        }
+
+        /* Fixed Trash Container */
+        .del {
+            position: fixed;
+            bottom: 35px;
+            right: 35px;
+            width: 65px;
+            height: 65px;
+            background-color: var(--danger);
+            color: #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(239, 68, 68, 0.4);
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+            z-index: 100;
+        }
+
+        /* Clean SVG Icon Sizing */
+        .del svg {
+            width: 28px;
+            height: 28px;
+            fill: currentColor;
+            pointer-events: none; /* Prevents event blockages while dragging */
+        }
+
+        .del:hover {
+            background-color: var(--danger-hover);
+            transform: scale(1.08);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Floating Delete Trash Zone (Uses Native Inline SVG) -->
+    <div class="del">
+        <svg xmlns="http://w3.org" viewBox="0 0 24 24">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+        </svg>
+    </div>
+
+    <!-- Input Task Form -->
+    <div class="input-container">
+        <input type="text" placeholder="Write a new task...">
+        <button type="submit" onclick="run(event)" disabled="true">Add Task</button>
+    </div>
+
+    <!-- Kanban Columns Grid -->
+    <div class="main">
+        <div class="colm" id="todo">
+            <h1>To-Do</h1>
+            <div class="items" draggable="true">Hello there! Drag me to any column.</div>
+        </div>
+        <div class="colm" id="progress">
+            <h1>In Progress</h1>
+        </div>
+        <div class="colm" id="Completed">
+            <h1>Completed</h1>
+        </div>
+    </div>
+
+    <script>
+        let input = document.querySelector('input');
+        let to_do = document.querySelector('#todo');
+        let progress = document.querySelector('#progress');
+        let complete = document.querySelector('#Completed');
+        let btn = document.querySelector("button");
+        let main = document.querySelector(".main");
+
+        // Clean initial dynamic rendering from localStorage
+        if(localStorage.getItem("todo")) to_do.innerHTML = localStorage.getItem("todo");
+        if(localStorage.getItem("progress")) progress.innerHTML = localStorage.getItem("progress");
+        if(localStorage.getItem("complete")) complete.innerHTML = localStorage.getItem("complete");
+
+        input.addEventListener('keyup', (e) => {
+            if(input.value.trim() == "") {
+                btn.disabled = true;
+            } else {
+                btn.disabled = false;
+                if(e.key == "Enter") run();
+            }
+        });
+
+        function run(event) {
+            let div = document.createElement('div');
+            div.classList = "items";
+            div.innerText = input.value;
+            div.draggable = true;
+            to_do.appendChild(div);
+            input.value = "";
+            btn.disabled = true;
+            local();
+        }
+
+        let dragged;
+        main.addEventListener('dragstart', (e) => {
+            let target = e.target.closest(".items");
+            if(!target) return;
+            dragged = target;
+        });
+
+        document.body.addEventListener('dragover', (e) => {
+            let del = e.target.closest(".del");
+            let target = e.target.closest(".colm");
+            if(del || target) e.preventDefault();
+        });
+
+        document.body.addEventListener('drop', (e) => {
+            let tarr = e.target.closest(".colm");
+            let del = e.target.closest(".del");
+            
+            if(tarr && dragged) {
+                tarr.appendChild(dragged);
+            }
+            if(del && dragged) {
+                dragged.remove();
+            }
+            local();
+        });
+
+        function local() {
+            localStorage.setItem("todo", to_do.innerHTML);
+            localStorage.setItem("progress", progress.innerHTML);
+            localStorage.setItem("complete", complete.innerHTML);
+        }
+    </script>
+</body>
+</html>
